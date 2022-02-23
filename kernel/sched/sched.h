@@ -176,6 +176,12 @@ static inline int dl_policy(int policy)
 {
 	return policy == SCHED_DEADLINE;
 }
+
+static inline int wrr_policy(int policy)
+{
+	return policy == SCHED_WRR;
+}
+
 static inline bool valid_policy(int policy)
 {
 	return idle_policy(policy) || fair_policy(policy) ||
@@ -524,6 +530,9 @@ static inline void set_task_rq_fair(struct sched_entity *se,
 
 #else /* CONFIG_CGROUP_SCHED */
 
+extern void free_wrr_sched_group(struct task_group *tg);
+extern void alloc_wrr_sched_group(struct task_group *tg, struct task_group *parent);
+
 struct cfs_bandwidth { };
 
 #endif	/* CONFIG_CGROUP_SCHED */
@@ -626,6 +635,15 @@ struct cfs_rq {
 #endif /* CONFIG_CFS_BANDWIDTH */
 #endif /* CONFIG_FAIR_GROUP_SCHED */
 };
+
+struct wrr_rq {
+	unsigned int wrr_nr_running; /* number of entities in wrr_rq */
+
+	struct rq *rq; /* pointer to general run queue */
+	struct list_head queue; /* entity queue of wrr_rq */
+	struct list_head leaf_wrr_rq_list;
+	struct task_group *tg;
+}
 
 static inline int rt_bandwidth_enabled(void)
 {
@@ -962,6 +980,11 @@ struct rq {
 	struct cfs_rq		cfs;
 	struct rt_rq		rt;
 	struct dl_rq		dl;
+	struct wrr_rq	    wrr;
+
+#ifdef CONFIG_WRR_GROUP_SCHED
+	struct list_head leaf_wrr_rq_list;
+#endif
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* list of leaf cfs_rq on this CPU: */
@@ -2228,6 +2251,7 @@ extern const struct sched_class dl_sched_class;
 extern const struct sched_class rt_sched_class;
 extern const struct sched_class fair_sched_class;
 extern const struct sched_class idle_sched_class;
+extern const struct sched_class wrr_sched_class;
 
 static inline bool sched_stop_runnable(struct rq *rq)
 {

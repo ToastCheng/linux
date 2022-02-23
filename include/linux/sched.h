@@ -67,6 +67,7 @@ struct sighand_struct;
 struct signal_struct;
 struct task_delay_info;
 struct task_group;
+struct wrr_rq;
 
 /*
  * Task state bitmask. NOTE! These bits are also
@@ -115,6 +116,8 @@ struct task_group;
 					 TASK_UNINTERRUPTIBLE | __TASK_STOPPED | \
 					 __TASK_TRACED | EXIT_DEAD | EXIT_ZOMBIE | \
 					 TASK_PARKED)
+
+#define MAX_USER_WRR_PRIO	100
 
 #define task_is_running(task)		(READ_ONCE((task)->__state) == TASK_RUNNING)
 
@@ -662,6 +665,20 @@ struct sched_dl_entity {
 #endif
 };
 
+struct sched_wrr_entity {
+	struct list_head run_list;
+	unsigned long timeout;
+	unsigned int time_slice;
+
+	struct sched_wrr_entity *back;
+	struct sched_wrr_entity *parent;
+
+	/* rq on which this entity is (to be) queued: */
+	struct wrr_rq *wrr_rq;
+	/* rq "owned" by this entity/group: */
+	struct wrr_rq *my_q;
+};
+
 #ifdef CONFIG_UCLAMP_TASK
 /* Number of utilization clamp buckets (shorter alias) */
 #define UCLAMP_BUCKETS CONFIG_UCLAMP_BUCKETS_COUNT
@@ -779,6 +796,7 @@ struct task_struct {
 	struct sched_entity		se;
 	struct sched_rt_entity		rt;
 	struct sched_dl_entity		dl;
+	struct sched_wrr_entity	wrr;
 	const struct sched_class	*sched_class;
 
 #ifdef CONFIG_SCHED_CORE

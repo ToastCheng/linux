@@ -80,6 +80,12 @@ const_debug unsigned int sysctl_sched_nr_migrate = 8;
 const_debug unsigned int sysctl_sched_nr_migrate = 32;
 #endif
 
+void init_wrr_rq(struct wrr_rq *wrr_rq)
+{
+	INIT_LIST_HEAD(&wrr_rq->queue);
+	wrr_rq->wrr_nr_running = 0;
+}
+
 /*
  * period over which we measure -rt task CPU usage in us.
  * default: 1s
@@ -4261,6 +4267,8 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
 	p->rt.on_rq		= 0;
 	p->rt.on_list		= 0;
 
+	INIT_LIST_HEAD(&p->wrr.run_list);
+
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	INIT_HLIST_HEAD(&p->preempt_notifiers);
 #endif
@@ -6734,7 +6742,9 @@ EXPORT_SYMBOL(default_wake_function);
 
 static void __setscheduler_prio(struct task_struct *p, int prio)
 {
-	if (dl_prio(prio))
+	if (p->policy == SCHED_WRR)
+		p->sched_class = &wrr_sched_class;
+	else if (dl_prio(prio))
 		p->sched_class = &dl_sched_class;
 	else if (rt_prio(prio))
 		p->sched_class = &rt_sched_class;
@@ -7278,7 +7288,8 @@ recheck:
 	if (attr->sched_priority > MAX_RT_PRIO-1)
 		return -EINVAL;
 	if ((dl_policy(policy) && !__checkparam_dl(attr)) ||
-	    (rt_policy(policy) != (attr->sched_priority != 0)))
+	    (rt_policy(policy) != (attr->sched_priority != 0)) ||
+		(wrr_policy(policy) != (param->sched_priority != 0)))
 		return -EINVAL;
 
 	/*
@@ -8440,6 +8451,9 @@ SYSCALL_DEFINE1(sched_get_priority_max, int, policy)
 	case SCHED_BATCH:
 	case SCHED_IDLE:
 		ret = 0;
+		break;
+	case SCHED_WRR:
+		ret = MAX_USER_WRR_PRIO-1;
 		break;
 	}
 	return ret;
@@ -9758,6 +9772,7 @@ static void sched_free_group(struct task_group *tg)
 {
 	free_fair_sched_group(tg);
 	free_rt_sched_group(tg);
+	free_wrr_sched_group(tg);
 	autogroup_free(tg);
 	kmem_cache_free(task_group_cache, tg);
 }
@@ -9771,6 +9786,7 @@ static void sched_unregister_group(struct task_group *tg)
 {
 	unregister_fair_sched_group(tg);
 	unregister_rt_sched_group(tg);
+	unregister_wrr_sched_group(tg);
 	/*
 	 * We have to wait for yet another RCU grace period to expire, as
 	 * print_cfs_stats() might run concurrently.
@@ -9791,6 +9807,9 @@ struct task_group *sched_create_group(struct task_group *parent)
 		goto err;
 
 	if (!alloc_rt_sched_group(tg, parent))
+		goto err;
+
+	if (!alloc_wrr_sched_group(tg, parent))
 		goto err;
 
 	alloc_uclamp_sched_group(tg, parent);
