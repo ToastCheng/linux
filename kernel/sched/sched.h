@@ -530,12 +530,13 @@ static inline void set_task_rq_fair(struct sched_entity *se,
 
 #else /* CONFIG_CGROUP_SCHED */
 
-extern void free_wrr_sched_group(struct task_group *tg);
-extern void alloc_wrr_sched_group(struct task_group *tg, struct task_group *parent);
 
 struct cfs_bandwidth { };
 
 #endif	/* CONFIG_CGROUP_SCHED */
+
+extern void free_wrr_sched_group(struct task_group *tg);
+extern int alloc_wrr_sched_group(struct task_group *tg, struct task_group *parent);
 
 /* CFS-related fields in a runqueue */
 struct cfs_rq {

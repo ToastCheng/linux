@@ -9786,7 +9786,7 @@ static void sched_unregister_group(struct task_group *tg)
 {
 	unregister_fair_sched_group(tg);
 	unregister_rt_sched_group(tg);
-	unregister_wrr_sched_group(tg);
+	// unregister_wrr_sched_group(tg);
 	/*
 	 * We have to wait for yet another RCU grace period to expire, as
 	 * print_cfs_stats() might run concurrently.
