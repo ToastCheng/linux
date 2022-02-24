@@ -643,7 +643,7 @@ struct wrr_rq {
 	struct list_head queue; /* entity queue of wrr_rq */
 	struct list_head leaf_wrr_rq_list;
 	struct task_group *tg;
-}
+};
 
 static inline int rt_bandwidth_enabled(void)
 {

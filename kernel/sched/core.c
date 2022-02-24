@@ -7289,7 +7289,7 @@ recheck:
 		return -EINVAL;
 	if ((dl_policy(policy) && !__checkparam_dl(attr)) ||
 	    (rt_policy(policy) != (attr->sched_priority != 0)) ||
-		(wrr_policy(policy) != (param->sched_priority != 0)))
+		(wrr_policy(policy) != (attr->sched_priority != 0)))
 		return -EINVAL;
 
 	/*
